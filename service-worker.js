@@ -4,7 +4,7 @@
  * Сервис-воркер, обеспечивающий оффлайновую работу избранного
  */
 
-const CACHE_VERSION = '1.0.1';
+const CACHE_VERSION = '1.0.2';
 
 importScripts('./vendor/kv-keeper.js-1.0.4/kv-keeper.js');
 
@@ -22,9 +22,10 @@ self.addEventListener('activate', event => {
     const promise = deleteObsoleteCaches()
         .then(() => {
             // Вопрос №2: зачем нужен этот вызов?
-            self.clients.claim();
-
-            console.log('[ServiceWorker] Activated!');
+            return self.clients.claim()
+              .then(() => {
+                console.log('[ServiceWorker] Activated!');
+              })
         });
 
     event.waitUntil(promise);
@@ -38,8 +39,7 @@ self.addEventListener('fetch', event => {
 
     let response;
     if (needStoreForOffline(cacheKey)) {
-        response = caches.match(cacheKey)
-            .then(cacheResponse => cacheResponse || fetchAndPutToCache(cacheKey, event.request));
+        response = fetchAndPutToCache(cacheKey, event.request);
     } else {
         response = fetchWithFallbackToCache(event.request);
     }
@@ -127,7 +127,8 @@ function deleteObsoleteCaches() {
 function needStoreForOffline(cacheKey) {
     return cacheKey.includes('vendor/') ||
         cacheKey.includes('assets/') ||
-        cacheKey.endsWith('jquery.min.js');
+        cacheKey.endsWith('jquery.min.js') ||
+        cacheKey.endsWith('gifs.html')
 }
 
 // Скачать и добавить в кеш
